@@ -1,0 +1,1 @@
+savedcmd_/home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/Hello-World/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/Hello-World/Module.symvers -T /home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/Hello-World/modules.order -i Module.symvers -e 

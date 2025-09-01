@@ -1,0 +1,1 @@
+savedcmd_/home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/Hello-World/hello.mod := printf '%s\n'   hello.o | awk '!x[$$0]++ { print("/home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/Hello-World/"$$0) }' > /home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/Hello-World/hello.mod

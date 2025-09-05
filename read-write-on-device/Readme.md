@@ -6,8 +6,8 @@ This project implements a basic Linux character device driver named hello_cdev. 
 
 
 📂 Project Structure
-hello_cdev.c      → Kernel module source code
-Makefile          → Build instructions
+    hello_cdev.c      → Kernel module source code
+    Makefile          → Build instructions
 
 
 ⚙️ Features

@@ -16,6 +16,7 @@ This project implements a basic Linux character device driver named hello_cdev. 
 
 ⚙️ Features
 
+    
     Registers a character device dynamically with a major number assigned by the kernel.
 
     Provides the following file operations:
@@ -36,43 +37,42 @@ This project implements a basic Linux character device driver named hello_cdev. 
 
 🛠️ Build & Install
 
+        1. Compile the module
 
-1. Compile the module
+        make
 
-make
-
-This produces hello_cdev.ko.
+        This produces hello_cdev.ko.
 
 
-2. Insert the module
+        2. Insert the module
 
-sudo insmod hello_cdev.ko
+        sudo insmod hello_cdev.ko
 
-Check kernel logs:
+        Check kernel logs:
 
-dmesg | tail
+        dmesg | tail
 
-You should see a message like:
+        You should see a message like:
 
-hello_cdev: registered successfully with major number <X>
+        hello_cdev: registered successfully with major number <X>
 
-(X will be the major number assigned by the kernel).
+        (X will be the major number assigned by the kernel).
 
 
 
 
 📑 Device File Creation
 
-To interact with the driver, create device nodes in /dev.
+        To interact with the driver, create device nodes in /dev.
 
-Example (replace <X> with the actual major number from dmesg):
+        Example (replace <X> with the actual major number from dmesg):
 
-sudo mknod /dev/hello_cdev c <X> 0
-sudo mknod /dev/hello_cdev10 c <X> 10
+        sudo mknod /dev/hello_cdev c <X> 0
+        sudo mknod /dev/hello_cdev10 c <X> 10
 
-Check:
+        Check:
 
-ls -l /dev/hello_cdev*
+        ls -l /dev/hello_cdev*
 
 
 
@@ -81,68 +81,68 @@ ls -l /dev/hello_cdev*
 🧪 Testing the Driver
 
 
-Write data
+        Write data
 
-echo "hello kernel" | sudo tee /dev/hello_cdev
+        echo "hello kernel" | sudo tee /dev/hello_cdev
 
-Read data back
+        Read data back
 
-cat /dev/hello_cdev
+        cat /dev/hello_cdev
 
-Write longer messages
+        Write longer messages
 
-echo "this is a longer test string" | sudo tee /dev/hello_cdev
-cat /dev/hello_cdev
+        echo "this is a longer test string" | sudo tee /dev/hello_cdev
+        cat /dev/hello_cdev
 
-Multiple device nodes
+        Multiple device nodes
 
-cat /dev/hello_cdev10
+        cat /dev/hello_cdev10
 
-(Will show buffer contents for minor=10, which maps to the same driver).
+        (Will show buffer contents for minor=10, which maps to the same driver).
 
 
 
 
 
 🧹 Cleanup
-Remove device nodes
+        Remove device nodes
 
-sudo rm -f /dev/hello_cdev /dev/hello_cdev10
+        sudo rm -f /dev/hello_cdev /dev/hello_cdev10
 
-Unload the module
+        Unload the module
 
-sudo rmmod hello_cdev
+        sudo rmmod hello_cdev
 
-Clean build files
+        Clean build files
 
-make clean
+        make clean
 
 
 
 
 🔎 Debugging
 
-    Kernel logs:
+            Kernel logs:
 
-dmesg | grep hello_cdev
+        dmesg | grep hello_cdev
 
-    Example log entries:
+            Example log entries:
 
-hello_cdev: device opened (major=235, minor=0)
-hello_cdev: wrote 13 bytes, new offset=13
-hello_cdev: read 13 bytes, new offset=13
-hello_cdev: device closed (major=235, minor=0)
+        hello_cdev: device opened (major=235, minor=0)
+        hello_cdev: wrote 13 bytes, new offset=13
+        hello_cdev: read 13 bytes, new offset=13
+        hello_cdev: device closed (major=235, minor=0)
 
 
 
 📜 License
 
-This project is licensed under the GPL v2 license (required for Linux kernel modules).
+        This project is licensed under the GPL v2 license (required for Linux kernel modules).
 
 
 
 
 👤 Author
 
-Muhammad Ali Hussnain
-Simple example to demonstrate Linux kernel character device drivers.
+        Muhammad Ali Hussnain
+        Simple example to demonstrate Linux kernel character device drivers.

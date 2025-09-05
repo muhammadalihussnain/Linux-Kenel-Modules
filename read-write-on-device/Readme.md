@@ -1,7 +1,11 @@
 hello_cdev – Simple Linux Character Device Driver 
 📌 Overview 
 
-This project implements a basic Linux character device driver named hello_cdev. It demonstrates how to: Register a character device Handle open, release, read, and write operations Exchange data between kernel space and user space using copy_to_user and copy_from_user The driver maintains an internal 64-byte buffer that can be read/written by user applications. 📂 Project Structure
+This project implements a basic Linux character device driver named hello_cdev. It demonstrates how to: Register a character device Handle open, release, read, and write operations Exchange data between kernel space and user space using copy_to_user and copy_from_user The driver maintains an internal 64-byte buffer that can be read/written by user applications. 
+
+
+
+📂 Project Structure
 hello_cdev.c      → Kernel module source code
 Makefile          → Build instructions
 

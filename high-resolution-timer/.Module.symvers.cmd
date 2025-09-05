@@ -1,1 +1,0 @@
-savedcmd_/home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/high-resolution-timer/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/high-resolution-timer/Module.symvers -T /home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/high-resolution-timer/modules.order -i Module.symvers -e 

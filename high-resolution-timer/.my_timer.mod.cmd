@@ -1,0 +1,1 @@
+savedcmd_/home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/high-resolution-timer/my_timer.mod := printf '%s\n'   my_timer.o | awk '!x[$$0]++ { print("/home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/high-resolution-timer/"$$0) }' > /home/muhammad/Desktop/Linux_Kernel/Linux-Kenel-Modules/high-resolution-timer/my_timer.mod

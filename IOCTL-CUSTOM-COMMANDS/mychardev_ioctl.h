@@ -1,0 +1,11 @@
+#ifndef MYCHARDEV_IOCTL_H
+#define MYCHARDEV_IOCTL_H
+
+#include <linux/ioctl.h>
+
+#define MY_IOCTL_MAGIC 'M'
+#define IOCTL_CMD_INCREMENT _IO(MY_IOCTL_MAGIC, 0)
+#define IOCTL_CMD_DECREMENT _IO(MY_IOCTL_MAGIC, 1)
+#define IOCTL_CMD_RESET     _IO(MY_IOCTL_MAGIC, 2)
+
+#endif

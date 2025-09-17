@@ -1,0 +1,187 @@
+# Kernel ↔ User Collaboration Overview
+
+This project demonstrates **communication from kernel space to user space using signals**.
+
+## Components
+
+1. **Kernel Module**: `sender_signal.c`
+
+   * Registers a **character device** `/dev/sigdev`.
+   * Accepts **PID registration** from user space via `ioctl()`.
+   * Sends a signal (`SIGUSR1`) with custom data to the registered user-space process using `send_sig_info()`.
+
+2. **User Space Program**: `receiver_user.c`
+
+   * Opens `/dev/sigdev`.
+   * Registers its **PID** with the kernel module via `ioctl()`.
+   * Sets up a **signal handler** to receive `SIGUSR1` from kernel.
+   * Prints the received signal data.
+
+---
+
+## Step-by-Step Collaboration
+
+### 1. User Program Starts
+
+* The user-space program executes:
+
+```bash
+./receiver_user
+```
+
+* It retrieves its PID:
+
+```c
+int pid = getpid();
+```
+
+* Opens the kernel device:
+
+```c
+fd = open("/dev/sigdev", O_RDWR);
+```
+
+* Registers its PID with the kernel module using `ioctl`:
+
+```c
+ioctl(fd, IOCTL_SET_PID, &pid);
+```
+
+> ✅ At this point, the kernel now **knows the PID** of the process it needs to signal.
+
+---
+
+### 2. Kernel Module Receives PID
+
+* `sigdev_ioctl()` in the kernel module is called:
+
+```c
+static long sigdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+```
+
+* The PID is copied from user space to kernel space using `copy_from_user()`:
+
+```c
+copy_from_user(&pid, (int32_t *)arg, sizeof(pid));
+```
+
+* Kernel stores this PID in a **global variable**:
+
+```c
+static int pid = -1;
+```
+
+---
+
+### 3. Kernel Prepares Signal
+
+* The kernel module schedules a **delayed work** to simulate an event:
+
+```c
+INIT_DELAYED_WORK(&my_work, work_handler);
+schedule_delayed_work(&my_work, 5 * HZ); // after 5 seconds
+```
+
+* `work_handler()` is called by kernel workqueue:
+
+```c
+static void work_handler(struct work_struct *work)
+{
+    send_signal_to_user();
+}
+```
+
+* `send_signal_to_user()` uses the stored PID to find the user process:
+
+```c
+task = find_task_by_vpid(pid);
+```
+
+* Kernel prepares the `siginfo` struct:
+
+```c
+struct siginfo info;
+info.si_signo = SIGUSR1;
+info.si_code = SI_QUEUE;
+info.si_int = 1234; // custom data
+```
+
+* Kernel sends the signal:
+
+```c
+send_sig_info(SIGUSR1, &info, task);
+```
+
+---
+
+### 4. User Receives Signal
+
+* The signal handler in the user program executes:
+
+```c
+static void handler(int signo, siginfo_t *info, void *context)
+```
+
+* It prints the received signal info:
+
+```c
+printf("User: Received SIGUSR1 from kernel!\n");
+printf("User: Data received (si_int) = %d\n", info->si_int);
+```
+
+* The user program continues waiting for more signals using:
+
+```c
+while (1) pause();
+```
+
+---
+
+### 5. Summary of Interaction
+
+| Step | User Space Action                  | Kernel Space Action                             |
+| ---- | ---------------------------------- | ----------------------------------------------- |
+| 1    | Open `/dev/sigdev`                 | Device ready                                    |
+| 2    | `ioctl(fd, IOCTL_SET_PID, &pid)`   | Kernel saves PID                                |
+| 3    | Wait for signal                    | Schedule work → prepare `siginfo` → send signal |
+| 4    | Signal received → handler executes | Signal delivered                                |
+| 5    | Print received data                | Logs in kernel (`printk`)                       |
+
+---
+
+### 6. Visual Flow Diagram (ASCII)
+
+```
+User Space                  Kernel Space
+-------------               -------------
+main()                       module_init()
+  |                            |
+  | open("/dev/sigdev")        |
+  |--------------------------->|
+  |                            |
+  | ioctl(fd, IOCTL_SET_PID)   |
+  |--------------------------->| saves PID
+  |                            |
+  |        schedule_delayed_work() after 5s
+  |                            |
+  |<---------------------------|
+  |                            |
+  |    send_sig_info(SIGUSR1)  |
+  |<---------------------------| signal sent
+  |                            |
+  | signal handler executes    |
+  | prints data (si_int = 1234)|
+  |                            |
+pause() <----------------------|
+(wait for next signal)
+```
+
+---
+
+### 7. Key Points
+
+* **Communication direction**: Kernel → User via **signals**.
+* **PID registration**: Mandatory for kernel to know target process.
+* **Custom data**: `si_int` allows sending integer data with signal.
+* **Delayed work**: Simulates kernel event.
+* **Character device**: Acts as communication channel for `ioctl`.

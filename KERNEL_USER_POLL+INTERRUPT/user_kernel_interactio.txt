@@ -1,0 +1,195 @@
+Userspace and Kernel Space Interaction for GPIO Poll Driver
+==========================================================
+
+This document explains the step-by-step interaction between a userspace application and the kernel module 
+("irqpoll") that you have written. The driver uses interrupts and the poll mechanism to efficiently notify
+userspace of button presses.
+
+Components:
+------------
+1. Kernel Module: "irqpoll" (your driver)
+   - Creates device: /dev/irqpoll
+   - Uses GPIO 17 with interrupt handling
+   - Implements poll() mechanism with waitqueue
+
+2. Userspace Program: (e.g., button_watcher)
+   - Opens /dev/irqpoll
+   - Uses poll() system call to wait for button events
+   - Reads events when they become available
+
+Step-by-Step Interaction Flow:
+------------------------------
+
+Phase 1: Initialization (Module Loading)
+----------------------------------------
+1.  Root user loads the kernel module:
+    $ sudo insmod irqpoll.ko
+
+2.  Kernel calls ModuleInit() function:
+    - Initializes waitqueue (init_waitqueue_head)
+    - Requests and configures GPIO 17
+    - Maps GPIO to IRQ number (gpio_to_irq)
+    - Registers interrupt handler (request_irq)
+    - Creates character device /dev/irqpoll (register_chrdev)
+
+3.  Module prints: "gpio_irq_poll: Module loaded. Device: /dev/irqpoll (major=64)"
+
+Phase 2: Userspace Program Setup
+--------------------------------
+4.  Userspace program starts:
+    $ ./button_watcher
+
+5.  Program opens the device file:
+    int fd = open("/dev/irqpoll", O_RDONLY);
+
+6.  Program prepares for poll() call:
+    struct pollfd fds[1];
+    fds[0].fd = fd;
+    fds[0].events = POLLIN;
+
+Phase 3: The Waiting (Polling)
+------------------------------
+7.  Program calls poll() system call:
+    int ret = poll(fds, 1, 5000); // Wait 5 seconds
+
+8.  Kernel receives poll() call and dispatches it to your driver's my_poll() function.
+
+9.  Your my_poll() function executes:
+    - poll_wait(file, &waitqueue, wait): Registers the current process with the waitqueue
+    - Checks irq_ready flag (currently 0)
+    - Returns 0 (no events available)
+
+10. Kernel puts the userspace process to sleep on the waitqueue.
+
+11. The userspace program is now suspended, consuming zero CPU resources.
+
+Phase 4: Hardware Event (Button Press)
+--------------------------------------
+12. User presses the button connected to GPIO 17.
+
+13. Hardware generates an interrupt.
+
+14. Kernel interrupts current execution and calls your interrupt handler:
+    gpio_irq_poll_handler()
+
+15. Your interrupt handler executes:
+    - Prints "gpio_irq_poll: Button interrupt detected!" to kernel log
+    - Sets irq_ready = 1 (marks that an event occurred)
+    - Calls wake_up(&waitqueue) (wakes all processes sleeping on this queue)
+
+Phase 5: Wakeup and Event Delivery
+----------------------------------
+16. Kernel moves the sleeping userspace process from "sleeping" to "runnable" state.
+
+17. Kernel re-enters your my_poll() function.
+
+18. Your my_poll() function executes again:
+    - poll_wait() (re-registers the waitqueue)
+    - Checks irq_ready flag (now = 1)
+    - Sets irq_ready = 0 (consumes the event)
+    - Returns POLLIN (indicating data is readable)
+
+19. Kernel returns from poll() system call to userspace with POLLIN flag set.
+
+20. Userspace program continues execution:
+    if (fds[0].revents & POLLIN) {
+        // Button was pressed!
+        read(fd, &event, sizeof(event)); // Read the event data
+    }
+
+Phase 6: Cleanup
+----------------
+21. Userspace program closes the device and exits:
+    close(fd);
+
+22. Root user unloads the module:
+    $ sudo rmmod irqpoll
+
+23. Kernel calls ModuleExit() function:
+    - free_irq(): Unregisters interrupt handler
+    - gpio_unexport() and gpio_free(): Releases GPIO
+    - unregister_chrdev(): Removes /dev/irqpoll device
+
+Key Communication Mechanisms:
+-----------------------------
+1. Device File (/dev/irqpoll):
+   - The interface between userspace and kernel space
+   - Created by register_chrdev()
+   - Accessed via open(), poll(), read(), close() system calls
+
+2. Wait Queue:
+   - The "sleeping room" where processes wait for events
+   - Kernel puts processes to sleep on waitqueue when no data available
+   - Driver wakes processes from waitqueue when events occur
+
+3. Flag Variable (irq_ready):
+   - Communication between interrupt context (handler) and process context (poll)
+   - Atomic operation: interrupt sets it, poll function checks and clears it
+
+4. Poll Mechanism:
+   - Efficient sleeping/wakeup protocol
+   - Allows multiple processes to wait on the same device
+   - Wakes only when needed (zero CPU usage while waiting)
+
+Example Userspace Program:
+--------------------------
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <unistd.h>
+
+int main() {
+    int fd = open("/dev/irqpoll", O_RDONLY);
+    if (fd < 0) {
+        perror("Open failed");
+        return 1;
+    }
+
+    struct pollfd fds[1];
+    fds[0].fd = fd;
+    fds[0].events = POLLIN;
+
+    printf("Waiting for button presses...\n");
+
+    while (1) {
+        int ret = poll(fds, 1, 5000);
+        
+        if (ret < 0) {
+            perror("Poll failed");
+            break;
+        }
+        
+        if (ret == 0) {
+            printf("Timeout - no button press in 5 seconds\n");
+            continue;
+        }
+        
+        if (fds[0].revents & POLLIN) {
+            printf("Button pressed! Event received.\n");
+            // Read the event data if needed
+            char buffer[16];
+            read(fd, buffer, sizeof(buffer));
+        }
+    }
+
+    close(fd);
+    return 0;
+}
+
+Important Notes:
+----------------
+- The interrupt handler (gpio_irq_poll_handler) runs in interrupt context
+  - Must be fast and non-blocking
+  - Cannot call sleeping functions
+
+- The poll function (my_poll) runs in process context
+  - Can sleep (but doesn't in this implementation)
+  - Called from the context of the userspace process
+
+- Multiple userspace processes can poll() on the same device simultaneously
+  - All will be woken up when wake_up() is called
+  - This is why we clear irq_ready flag after checking
+
+- The read() function in the example would need corresponding .read implementation
+  in your file_operations to actually return data to userspace
